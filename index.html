@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Betting App</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: white;
+    }
+    .balance {
+      position: fixed;
+      top: 10px;
+      right: 20px;
+      font-size: 18px;
+    }
+    .match, .wallet, .notification, .admin {
+      padding: 20px;
+      border-bottom: 1px solid #333;
+    }
+    .wallet-icon {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      background-color: #1f1f1f;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 40px;
+      font-weight: bold;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .admin-login {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .hidden { display: none; }
+    button { padding: 6px 12px; margin-top: 5px; cursor: pointer; }
+    input, select { padding: 6px; margin: 5px 0; width: 100%; }
+  </style>
+</head>
+<body>
+
+  <div class="balance">Balance: <span id="balance">৳0</span></div>
+
+  <div class="notification">
+    <small>🔔 Notification will appear here</small>
+  </div>
+
+  <div class="match">
+    <h3>Select Match</h3>
+    <div id="matchList">No matches available</div>
+  </div>
+
+  <div class="wallet hidden" id="walletMenu">
+    <h3>Wallet</h3>
+    <button onclick="openDeposit()">Deposit</button>
+    <button onclick="openWithdraw()">Withdraw</button>
+  </div>
+
+  <div class="wallet-icon" onclick="toggleWallet()">
+    💰
+  </div>
+
+  <div class="admin-login" onclick="showAdminLogin()">
+    R
+  </div>
+
+  <div id="adminPanel" class="hidden">
+    <h3>Welcome Admin</h3>
+    <input type="text" id="team1" placeholder="Team 1">
+    <input type="text" id="team2" placeholder="Team 2">
+    <input type="number" id="rate1" placeholder="Team 1 Profit Multiplier">
+    <input type="number" id="rate2" placeholder="Team 2 Profit Multiplier">
+    <button onclick="addMatch()">Add Match</button>
+    <h4>Deposit Requests:</h4>
+    <div id="depositRequests">None</div>
+    <h4>Withdraw Requests:</h4>
+    <div id="withdrawRequests">None</div>
+    <h4>Decide Winner:</h4>
+    <div id="matchResults">None</div>
+  </div>
+
+  <script>
+    let balance = 0;
+    let matches = [];
+    let userBets = [];
+
+    function updateBalance() {
+      document.getElementById("balance").innerText = `৳${balance}`;
+    }
+
+    function toggleWallet() {
+      document.getElementById("walletMenu").classList.toggle("hidden");
+    }
+
+    function showAdminLogin() {
+      let pwd = prompt("Enter admin password:");
+      if (pwd === "rezoan") {
+        document.getElementById("adminPanel").classList.remove("hidden");
+      } else {
+        alert("Wrong password!");
+      }
+    }
+
+    function addMatch() {
+      let team1 = document.getElementById("team1").value;
+      let team2 = document.getElementById("team2").value;
+      let rate1 = parseFloat(document.getElementById("rate1").value);
+      let rate2 = parseFloat(document.getElementById("rate2").value);
+
+      if (team1 && team2 && rate1 && rate2) {
+        let match = { team1, team2, rate1, rate2, id: Date.now() };
+        matches.push(match);
+        showMatches();
+        alert("Match added!");
+      }
+    }
+
+    function showMatches() {
+      let container = document.getElementById("matchList");
+      container.innerHTML = "";
+      matches.forEach((m) => {
+        container.innerHTML += `
+          <div style='margin-bottom:10px'>
+            <strong>${m.team1}</strong> vs <strong>${m.team2}</strong><br>
+            <button onclick='placeBet(${m.id}, "team1")'>Bet on ${m.team1}</button>
+            <button onclick='placeBet(${m.id}, "team2")'>Bet on ${m.team2}</button>
+          </div>
+        `;
+      });
+
+      let resultPanel = document.getElementById("matchResults");
+      resultPanel.innerHTML = "";
+      matches.forEach((m) => {
+        resultPanel.innerHTML += `
+          <div>
+            ${m.team1} vs ${m.team2} 
+            <button onclick='declareWin(${m.id}, "team1")'>${m.team1} Win</button>
+            <button onclick='declareWin(${m.id}, "team2")'>${m.team2} Win</button>
+          </div>`;
+      });
+    }
+
+    function placeBet(matchId, team) {
+      let amount = parseFloat(prompt("Enter your bet amount:"));
+      if (!isNaN(amount) && amount > 0 && balance >= amount) {
+        balance -= amount;
+        userBets.push({ matchId, team, amount });
+        updateBalance();
+        alert("Bet placed!");
+      } else {
+        alert("Invalid amount or insufficient balance");
+      }
+    }
+
+    function declareWin(matchId, winnerTeam) {
+      userBets.forEach(bet => {
+        if (bet.matchId === matchId && bet.team === winnerTeam) {
+          let match = matches.find(m => m.id === matchId);
+          let profit = bet.amount * (winnerTeam === "team1" ? match.rate1 : match.rate2);
+          balance += profit;
+        }
+      });
+      updateBalance();
+      alert(`Winners rewarded for match ${matchId}`);
+    }
+
+    function openDeposit() {
+      let method = prompt("Choose method: bKash or Nagad");
+      if (method !== "bKash" && method !== "Nagad") return alert("Invalid method");
+      alert(`Send money to 01816395401 via ${method}`);
+      let amount = parseFloat(prompt("Enter deposit amount:"));
+      let txn = prompt("Enter transaction ID:");
+      if (amount && txn) {
+        document.getElementById("depositRequests").innerHTML += `<div>${method} - ৳${amount}, TXN: ${txn}</div>`;
+        balance += amount; // auto add for demo
+        updateBalance();
+      }
+    }
+
+    function openWithdraw() {
+      let method = prompt("Choose method: bKash or Nagad");
+      if (method !== "bKash" && method !== "Nagad") return alert("Invalid method");
+      let number = prompt("Enter your number:");
+      let amount = parseFloat(prompt("Enter amount to withdraw:"));
+      if (number && amount && balance >= amount) {
+        document.getElementById("withdrawRequests").innerHTML += `<div>${method} - ৳${amount} to ${number}</div>`;
+        balance -= amount; // auto deduct for demo
+        updateBalance();
+      } else {
+        alert("Invalid request or insufficient balance");
+      }
+    }
+  </script>
+</body>
+</html>
